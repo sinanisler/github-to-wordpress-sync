@@ -1,6 +1,11 @@
 # Github to WordPress Sync
 
-A powerful WordPress plugin that enables seamless synchronization of themes and plugins directly from GitHub repositories. Perfect for developers who want to streamline their development workflow.
+GitHub to WordPress Sync: Streamline theme & plugin updates directly from GitHub. Easy, secure, and developer-friendly.
+
+<a href="https://github.com/sponsors/sinanisler">
+<img src="https://img.shields.io/badge/Consider_Supporting_My_Projects_❤-GitHub-d46" width="300" height="auto" />
+</a>
+
 
 ## Features
 
