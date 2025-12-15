@@ -532,8 +532,7 @@
 
 .gtws-timeline-item {
     position: relative;
-    padding-bottom: 25px;
-    margin-bottom: 15px;
+    margin-bottom: 5px;
 }
 
 .gtws-timeline-item:last-child {
@@ -576,7 +575,7 @@
     background: #f9f9f9;
     border: 1px solid #c3c4c7;
     border-radius: 6px;
-    padding: 15px;
+    padding: 10px;
     position: relative;
     transition: all 0.2s;
 }
@@ -595,7 +594,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     flex-wrap: wrap;
 }
 
@@ -629,14 +628,14 @@
     color: #1d2327;
     font-size: 14px;
     line-height: 1.5;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     font-weight: 500;
 }
 
 .gtws-commit-date {
     color: #646970;
     font-size: 12px;
-    margin-bottom: 10px;
+    margin-bottom: 4px;
 }
 
 .gtws-sync-info {
@@ -682,6 +681,8 @@
     font-size: 16px;
     width: 16px;
     height: 16px;
+    position: relative;
+    top: 6px;
 }
 
 .gtws-no-history {
