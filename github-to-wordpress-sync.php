@@ -22,6 +22,602 @@ define('GTWS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('GTWS_PLUGIN_FILE', __FILE__);
 
 /**
+ * GitHub API Integration Class
+ */
+class GTWS_Github_API {
+    
+    /**
+     * Get repository owner and name from URL
+     */
+    private function parse_github_url($url) {
+        // Remove .git extension if present
+        $url = str_replace('.git', '', $url);
+        $url = rtrim($url, '/');
+        
+        // Extract owner and repo name
+        if (preg_match('/github\.com\/([^\/]+)\/([^\/]+)/', $url, $matches)) {
+            return array(
+                'owner' => $matches[1],
+                'repo' => $matches[2]
+            );
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Get latest commit from a branch
+     */
+    public function get_latest_commit($repo_url, $branch = 'main') {
+        $repo_info = $this->parse_github_url($repo_url);
+        
+        if (!$repo_info) {
+            return false;
+        }
+        
+        $api_url = sprintf(
+            'https://api.github.com/repos/%s/%s/commits/%s',
+            $repo_info['owner'],
+            $repo_info['repo'],
+            $branch
+        );
+        
+        $response = $this->make_api_request($api_url);
+        
+        if (!$response) {
+            return false;
+        }
+        
+        return array(
+            'sha' => $response['sha'],
+            'message' => isset($response['commit']['message']) ? $response['commit']['message'] : '',
+            'date' => isset($response['commit']['committer']['date']) ? $response['commit']['committer']['date'] : '',
+            'author' => isset($response['commit']['author']['name']) ? $response['commit']['author']['name'] : '',
+        );
+    }
+    
+    /**
+     * Get all branches for a repository
+     */
+    public function get_branches($repo_url) {
+        $repo_info = $this->parse_github_url($repo_url);
+        
+        if (!$repo_info) {
+            return false;
+        }
+        
+        $api_url = sprintf(
+            'https://api.github.com/repos/%s/%s/branches',
+            $repo_info['owner'],
+            $repo_info['repo']
+        );
+        
+        $response = $this->make_api_request($api_url);
+        
+        if (!$response || !is_array($response)) {
+            return false;
+        }
+        
+        $branches = array();
+        foreach ($response as $branch) {
+            if (isset($branch['name'])) {
+                $branches[] = $branch['name'];
+            }
+        }
+        
+        return $branches;
+    }
+    
+    /**
+     * Download repository as ZIP
+     */
+    public function download_repository($repo_url, $branch = 'main') {
+        $repo_info = $this->parse_github_url($repo_url);
+        
+        if (!$repo_info) {
+            return false;
+        }
+        
+        // GitHub archive URL
+        $download_url = sprintf(
+            'https://github.com/%s/%s/archive/refs/heads/%s.zip',
+            $repo_info['owner'],
+            $repo_info['repo'],
+            $branch
+        );
+        
+        // Create temporary file
+        $temp_file = wp_tempnam('gtws-repo-');
+        
+        // Download the file
+        $response = wp_remote_get($download_url, array(
+            'timeout' => 300,
+            'stream' => true,
+            'filename' => $temp_file
+        ));
+        
+        if (is_wp_error($response)) {
+            @unlink($temp_file);
+            return false;
+        }
+        
+        $response_code = wp_remote_retrieve_response_code($response);
+        
+        if ($response_code !== 200) {
+            @unlink($temp_file);
+            return false;
+        }
+        
+        return $temp_file;
+    }
+    
+    /**
+     * Get repository info
+     */
+    public function get_repository_info($repo_url) {
+        $repo_info = $this->parse_github_url($repo_url);
+        
+        if (!$repo_info) {
+            return false;
+        }
+        
+        $api_url = sprintf(
+            'https://api.github.com/repos/%s/%s',
+            $repo_info['owner'],
+            $repo_info['repo']
+        );
+        
+        $response = $this->make_api_request($api_url);
+        
+        if (!$response) {
+            return false;
+        }
+        
+        return array(
+            'name' => isset($response['name']) ? $response['name'] : '',
+            'description' => isset($response['description']) ? $response['description'] : '',
+            'default_branch' => isset($response['default_branch']) ? $response['default_branch'] : 'main',
+            'updated_at' => isset($response['updated_at']) ? $response['updated_at'] : '',
+            'private' => isset($response['private']) ? $response['private'] : false,
+        );
+    }
+    
+    /**
+     * Make API request to GitHub
+     */
+    private function make_api_request($url) {
+        $args = array(
+            'timeout' => 15,
+            'headers' => array(
+                'Accept' => 'application/vnd.github.v3+json',
+                'User-Agent' => 'WordPress-Github-Sync-Plugin'
+            )
+        );
+        
+        // Add GitHub token if available (for private repos or higher rate limits)
+        $github_token = get_option('gtws_github_token');
+        if ($github_token) {
+            $args['headers']['Authorization'] = 'token ' . $github_token;
+        }
+        
+        $response = wp_remote_get($url, $args);
+        
+        if (is_wp_error($response)) {
+            return false;
+        }
+        
+        $response_code = wp_remote_retrieve_response_code($response);
+        
+        if ($response_code !== 200) {
+            return false;
+        }
+        
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body, true);
+        
+        return $data;
+    }
+    
+    /**
+     * Get commits between two commits
+     */
+    public function get_commits_between($repo_url, $branch, $since_commit = null) {
+        $repo_info = $this->parse_github_url($repo_url);
+        
+        if (!$repo_info) {
+            return false;
+        }
+        
+        $api_url = sprintf(
+            'https://api.github.com/repos/%s/%s/commits?sha=%s',
+            $repo_info['owner'],
+            $repo_info['repo'],
+            $branch
+        );
+        
+        if ($since_commit) {
+            $api_url .= '&since=' . urlencode($since_commit);
+        }
+        
+        $response = $this->make_api_request($api_url);
+        
+        if (!$response || !is_array($response)) {
+            return false;
+        }
+        
+        $commits = array();
+        foreach ($response as $commit) {
+            if (isset($commit['sha'])) {
+                $commits[] = array(
+                    'sha' => $commit['sha'],
+                    'message' => isset($commit['commit']['message']) ? $commit['commit']['message'] : '',
+                    'date' => isset($commit['commit']['committer']['date']) ? $commit['commit']['committer']['date'] : '',
+                    'author' => isset($commit['commit']['author']['name']) ? $commit['commit']['author']['name'] : '',
+                );
+            }
+        }
+        
+        return $commits;
+    }
+}
+
+/**
+ * Sync Manager Class
+ * Handles downloading and syncing GitHub repositories to WordPress
+ */
+class GTWS_Sync_Manager {
+    
+    private $github_api;
+    
+    public function __construct() {
+        $this->github_api = new GTWS_Github_API();
+    }
+    
+    /**
+     * Sync a project from GitHub
+     */
+    public function sync_project($project) {
+        try {
+            // Download repository
+            $zip_file = $this->github_api->download_repository(
+                $project['github_url'],
+                $project['branch']
+            );
+            
+            if (!$zip_file) {
+                return array(
+                    'success' => false,
+                    'message' => 'Failed to download repository from GitHub'
+                );
+            }
+            
+            // Determine target directory
+            $target_dir = $this->get_target_directory($project['project_type'], $project['project_name']);
+            
+            if (!$target_dir) {
+                @unlink($zip_file);
+                return array(
+                    'success' => false,
+                    'message' => 'Invalid project type'
+                );
+            }
+            
+            // Extract and sync
+            $result = $this->extract_and_sync($zip_file, $target_dir, $project);
+            
+            // Clean up temp file
+            @unlink($zip_file);
+            
+            return $result;
+            
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Get target directory based on project type
+     */
+    private function get_target_directory($type, $name) {
+        switch ($type) {
+            case 'theme':
+                return WP_CONTENT_DIR . '/themes/' . $name;
+            case 'plugin':
+                return WP_CONTENT_DIR . '/plugins/' . $name;
+            default:
+                return false;
+        }
+    }
+    
+    /**
+     * Extract ZIP and sync to target directory
+     */
+    private function extract_and_sync($zip_file, $target_dir, $project) {
+        // Load WordPress filesystem
+        WP_Filesystem();
+        global $wp_filesystem;
+        
+        // Create temporary extraction directory
+        $temp_dir = wp_tempnam('gtws-extract-');
+        @unlink($temp_dir);
+        wp_mkdir_p($temp_dir);
+        
+        // Extract ZIP file
+        $unzip_result = unzip_file($zip_file, $temp_dir);
+        
+        if (is_wp_error($unzip_result)) {
+            $this->cleanup_directory($temp_dir);
+            return array(
+                'success' => false,
+                'message' => 'Failed to extract ZIP file: ' . $unzip_result->get_error_message()
+            );
+        }
+        
+        // Find the extracted folder (GitHub creates a folder with repo-branch name)
+        $extracted_folders = glob($temp_dir . '/*', GLOB_ONLYDIR);
+        
+        if (empty($extracted_folders)) {
+            $this->cleanup_directory($temp_dir);
+            return array(
+                'success' => false,
+                'message' => 'No folder found in extracted archive'
+            );
+        }
+        
+        $source_dir = $extracted_folders[0];
+        
+        // Backup existing directory if it exists
+        $backup_result = $this->backup_existing_directory($target_dir);
+        
+        // Create target directory if it doesn't exist
+        if (!file_exists($target_dir)) {
+            wp_mkdir_p($target_dir);
+        }
+        
+        // Sync files from source to target
+        $sync_result = $this->sync_directories($source_dir, $target_dir);
+        
+        // Clean up temp directory
+        $this->cleanup_directory($temp_dir);
+        
+        if ($sync_result) {
+            return array(
+                'success' => true,
+                'message' => 'Project synced successfully!',
+                'backup' => $backup_result,
+                'target_dir' => $target_dir
+            );
+        } else {
+            // Restore backup if sync failed
+            if ($backup_result) {
+                $this->restore_backup($target_dir, $backup_result);
+            }
+            
+            return array(
+                'success' => false,
+                'message' => 'Failed to sync files'
+            );
+        }
+    }
+    
+    /**
+     * Sync files from source to target directory
+     */
+    private function sync_directories($source, $target) {
+        if (!is_dir($source)) {
+            return false;
+        }
+        
+        // Create target directory if it doesn't exist
+        if (!file_exists($target)) {
+            wp_mkdir_p($target);
+        }
+        
+        // Get all files and directories
+        $items = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($source, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+        
+        foreach ($items as $item) {
+            $target_path = $target . DIRECTORY_SEPARATOR . $items->getSubPathName();
+            
+            if ($item->isDir()) {
+                // Create directory
+                if (!file_exists($target_path)) {
+                    wp_mkdir_p($target_path);
+                }
+            } else {
+                // Copy file
+                if (!copy($item, $target_path)) {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Backup existing directory
+     */
+    private function backup_existing_directory($dir) {
+        if (!file_exists($dir)) {
+            return false;
+        }
+        
+        $backup_dir = $dir . '-backup-' . date('YmdHis');
+        
+        // Use rename for quick backup
+        if (@rename($dir, $backup_dir)) {
+            return $backup_dir;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Restore backup
+     */
+    private function restore_backup($target_dir, $backup_dir) {
+        if (!file_exists($backup_dir)) {
+            return false;
+        }
+        
+        // Remove failed target
+        if (file_exists($target_dir)) {
+            $this->cleanup_directory($target_dir);
+        }
+        
+        // Restore backup
+        return @rename($backup_dir, $target_dir);
+    }
+    
+    /**
+     * Clean up directory recursively
+     */
+    private function cleanup_directory($dir) {
+        if (!file_exists($dir)) {
+            return;
+        }
+        
+        if (is_dir($dir)) {
+            $items = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+            
+            foreach ($items as $item) {
+                if ($item->isDir()) {
+                    @rmdir($item->getRealPath());
+                } else {
+                    @unlink($item->getRealPath());
+                }
+            }
+            
+            @rmdir($dir);
+        }
+    }
+    
+    /**
+     * Get list of files in directory
+     */
+    public function get_directory_files($dir) {
+        if (!is_dir($dir)) {
+            return array();
+        }
+        
+        $files = array();
+        
+        $items = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+        
+        foreach ($items as $item) {
+            $files[] = $items->getSubPathName();
+        }
+        
+        return $files;
+    }
+    
+    /**
+     * Check if directory exists and is writable
+     */
+    public function check_directory_permissions($type, $name) {
+        $dir = $this->get_target_directory($type, $name);
+        
+        if (!$dir) {
+            return array(
+                'exists' => false,
+                'writable' => false,
+                'path' => ''
+            );
+        }
+        
+        $parent_dir = dirname($dir);
+        
+        return array(
+            'exists' => file_exists($dir),
+            'writable' => is_writable($parent_dir) && (!file_exists($dir) || is_writable($dir)),
+            'path' => $dir
+        );
+    }
+    
+    /**
+     * Get backup list for a project
+     */
+    public function get_backups($type, $name) {
+        $target_dir = $this->get_target_directory($type, $name);
+        
+        if (!$target_dir) {
+            return array();
+        }
+        
+        $parent_dir = dirname($target_dir);
+        $project_name = basename($target_dir);
+        
+        $backups = glob($parent_dir . '/' . $project_name . '-backup-*');
+        
+        $backup_list = array();
+        foreach ($backups as $backup) {
+            $backup_list[] = array(
+                'path' => $backup,
+                'name' => basename($backup),
+                'date' => date('Y-m-d H:i:s', filemtime($backup)),
+                'size' => $this->get_directory_size($backup)
+            );
+        }
+        
+        // Sort by date, newest first
+        usort($backup_list, function($a, $b) {
+            return strtotime($b['date']) - strtotime($a['date']);
+        });
+        
+        return $backup_list;
+    }
+    
+    /**
+     * Get directory size
+     */
+    private function get_directory_size($dir) {
+        $size = 0;
+        
+        if (!is_dir($dir)) {
+            return 0;
+        }
+        
+        $items = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+        
+        foreach ($items as $item) {
+            $size += $item->getSize();
+        }
+        
+        return $this->format_bytes($size);
+    }
+    
+    /**
+     * Format bytes to human readable
+     */
+    private function format_bytes($bytes, $precision = 2) {
+        $units = array('B', 'KB', 'MB', 'GB', 'TB');
+        
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        
+        $bytes /= pow(1024, $pow);
+        
+        return round($bytes, $precision) . ' ' . $units[$pow];
+    }
+}
+
+/**
  * Main Plugin Class
  */
 class Github_To_WordPress_Sync {
@@ -49,9 +645,6 @@ class Github_To_WordPress_Sync {
      * Initialize plugin
      */
     private function init() {
-        // Load dependencies
-        $this->load_dependencies();
-        
         // Register activation/deactivation hooks
         register_activation_hook(GTWS_PLUGIN_FILE, array($this, 'activate'));
         register_deactivation_hook(GTWS_PLUGIN_FILE, array($this, 'deactivate'));
@@ -68,14 +661,6 @@ class Github_To_WordPress_Sync {
         add_action('wp_ajax_gtws_check_updates', array($this, 'ajax_check_updates'));
         add_action('wp_ajax_gtws_sync_project', array($this, 'ajax_sync_project'));
         add_action('wp_ajax_gtws_get_branches', array($this, 'ajax_get_branches'));
-    }
-    
-    /**
-     * Load dependencies
-     */
-    private function load_dependencies() {
-        require_once GTWS_PLUGIN_DIR . 'includes/class-github-api.php';
-        require_once GTWS_PLUGIN_DIR . 'includes/class-sync-manager.php';
     }
     
     /**
@@ -149,7 +734,215 @@ class Github_To_WordPress_Sync {
      * Render admin page
      */
     public function render_admin_page() {
-        require_once GTWS_PLUGIN_DIR . 'includes/admin-page.php';
+        $projects = get_option('gtws_projects', array());
+        ?>
+        <div class="wrap gtws-admin-wrap">
+            <h1>
+                <span class="dashicons dashicons-update"></span>
+                <?php _e('Github to WordPress Sync', 'snn'); ?>
+            </h1>
+            
+            <div class="gtws-container">
+                <!-- Add New Project Section -->
+                <div class="gtws-card">
+                    <h2><?php _e('Add New Project', 'snn'); ?></h2>
+                    
+                    <form id="gtws-add-project-form" class="gtws-form">
+                        <div class="gtws-form-group">
+                            <label for="github_url">
+                                <?php _e('GitHub Repository URL', 'snn'); ?>
+                                <span class="required">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="github_url" 
+                                name="github_url" 
+                                placeholder="https://github.com/username/repository-name"
+                                required
+                            >
+                            <p class="description">
+                                <?php _e('Enter the GitHub repository URL (without .git extension)', 'snn'); ?>
+                            </p>
+                        </div>
+                        
+                        <div class="gtws-form-row">
+                            <div class="gtws-form-group">
+                                <label for="project_type">
+                                    <?php _e('Project Type', 'snn'); ?>
+                                    <span class="required">*</span>
+                                </label>
+                                <select id="project_type" name="project_type" required>
+                                    <option value=""><?php _e('Select Type', 'snn'); ?></option>
+                                    <option value="theme"><?php _e('Theme', 'snn'); ?></option>
+                                    <option value="plugin"><?php _e('Plugin', 'snn'); ?></option>
+                                </select>
+                            </div>
+                            
+                            <div class="gtws-form-group">
+                                <label for="project_name">
+                                    <?php _e('Project Name (Folder Name)', 'snn'); ?>
+                                    <span class="required">*</span>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="project_name" 
+                                    name="project_name" 
+                                    placeholder="my-theme or my-plugin"
+                                    required
+                                >
+                                <p class="description">
+                                    <?php _e('The folder name in wp-content/themes or wp-content/plugins', 'snn'); ?>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="gtws-form-group">
+                            <label for="branch">
+                                <?php _e('Branch', 'snn'); ?>
+                                <span class="required">*</span>
+                            </label>
+                            <div class="gtws-branch-selector">
+                                <input 
+                                    type="text" 
+                                    id="branch" 
+                                    name="branch" 
+                                    value="main"
+                                    required
+                                >
+                                <button type="button" id="fetch-branches" class="button">
+                                    <?php _e('Fetch Branches', 'snn'); ?>
+                                </button>
+                            </div>
+                            <div id="branch-list" class="gtws-branch-list"></div>
+                        </div>
+                        
+                        <button type="submit" class="button button-primary button-large">
+                            <span class="dashicons dashicons-plus-alt"></span>
+                            <?php _e('Add Project', 'snn'); ?>
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Projects List -->
+                <div class="gtws-card">
+                    <h2><?php _e('Synced Projects', 'snn'); ?></h2>
+                    
+                    <?php if (empty($projects)): ?>
+                        <div class="gtws-empty-state">
+                            <span class="dashicons dashicons-admin-plugins"></span>
+                            <p><?php _e('No projects added yet. Add your first project above!', 'snn'); ?></p>
+                        </div>
+                    <?php else: ?>
+                        <div class="gtws-projects-list">
+                            <?php foreach ($projects as $project): ?>
+                                <div class="gtws-project-item" data-project-id="<?php echo esc_attr($project['id']); ?>">
+                                    <div class="gtws-project-header">
+                                        <div class="gtws-project-info">
+                                            <h3>
+                                                <span class="gtws-project-type gtws-type-<?php echo esc_attr($project['project_type']); ?>">
+                                                    <?php echo esc_html(ucfirst($project['project_type'])); ?>
+                                                </span>
+                                                <?php echo esc_html($project['project_name']); ?>
+                                            </h3>
+                                            <p class="gtws-project-url">
+                                                <span class="dashicons dashicons-admin-links"></span>
+                                                <a href="<?php echo esc_url($project['display_url']); ?>" target="_blank">
+                                                    <?php echo esc_html($project['display_url']); ?>
+                                                </a>
+                                            </p>
+                                        </div>
+                                        
+                                        <div class="gtws-project-actions">
+                                            <button 
+                                                class="button gtws-check-update" 
+                                                data-project-id="<?php echo esc_attr($project['id']); ?>"
+                                            >
+                                                <span class="dashicons dashicons-update"></span>
+                                                <?php _e('Check Update', 'snn'); ?>
+                                            </button>
+                                            
+                                            <button 
+                                                class="button button-primary gtws-sync-project" 
+                                                data-project-id="<?php echo esc_attr($project['id']); ?>"
+                                            >
+                                                <span class="dashicons dashicons-download"></span>
+                                                <?php _e('Sync Now', 'snn'); ?>
+                                            </button>
+                                            
+                                            <button 
+                                                class="button button-link-delete gtws-delete-project" 
+                                                data-project-id="<?php echo esc_attr($project['id']); ?>"
+                                            >
+                                                <span class="dashicons dashicons-trash"></span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="gtws-project-details">
+                                        <div class="gtws-detail-item">
+                                            <strong><?php _e('Branch:', 'snn'); ?></strong>
+                                            <span class="gtws-branch-badge"><?php echo esc_html($project['branch']); ?></span>
+                                        </div>
+                                        
+                                        <?php if (!empty($project['last_commit'])): ?>
+                                            <div class="gtws-detail-item">
+                                                <strong><?php _e('Latest Commit:', 'snn'); ?></strong>
+                                                <code><?php echo esc_html(substr($project['last_commit'], 0, 7)); ?></code>
+                                                <?php if (!empty($project['commit_message'])): ?>
+                                                    <span class="gtws-commit-message">
+                                                        - <?php echo esc_html($project['commit_message']); ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        
+                                        <?php if (!empty($project['commit_date'])): ?>
+                                            <div class="gtws-detail-item">
+                                                <strong><?php _e('Commit Date:', 'snn'); ?></strong>
+                                                <?php echo esc_html(date('F j, Y g:i a', strtotime($project['commit_date']))); ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        
+                                        <?php if (!empty($project['last_sync'])): ?>
+                                            <div class="gtws-detail-item">
+                                                <strong><?php _e('Last Sync:', 'snn'); ?></strong>
+                                                <?php echo esc_html(date('F j, Y g:i a', strtotime($project['last_sync']))); ?>
+                                                <?php if (!empty($project['last_sync_commit'])): ?>
+                                                    <code><?php echo esc_html(substr($project['last_sync_commit'], 0, 7)); ?></code>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    
+                                    <div class="gtws-project-status"></div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                
+                <!-- Info Section -->
+                <div class="gtws-card gtws-info-card">
+                    <h3><?php _e('How to Use', 'snn'); ?></h3>
+                    <ol>
+                        <li><?php _e('Add your GitHub repository URL (e.g., https://github.com/username/repo)', 'snn'); ?></li>
+                        <li><?php _e('Select whether it\'s a theme or plugin', 'snn'); ?></li>
+                        <li><?php _e('Enter the exact folder name as it should appear in wp-content/themes or wp-content/plugins', 'snn'); ?></li>
+                        <li><?php _e('Choose the branch you want to sync (usually "main" or "master")', 'snn'); ?></li>
+                        <li><?php _e('Click "Add Project" to save', 'snn'); ?></li>
+                        <li><?php _e('Use "Check Update" to see if there are new commits', 'snn'); ?></li>
+                        <li><?php _e('Click "Sync Now" to download and update your theme/plugin', 'snn'); ?></li>
+                    </ol>
+                    
+                    <div class="gtws-warning">
+                        <span class="dashicons dashicons-warning"></span>
+                        <strong><?php _e('Important:', 'snn'); ?></strong>
+                        <?php _e('Syncing will overwrite local changes. Make sure to commit your work to GitHub first!', 'snn'); ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php
     }
     
     /**
