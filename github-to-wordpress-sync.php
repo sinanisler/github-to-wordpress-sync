@@ -1,5 +1,5 @@
 <?php
-/**
+/** 
  * Plugin Name: Github to WordPress Sync
  * Plugin URI: https://sinanisler.com
  * Description: GitHub to WordPress Sync: Streamline theme & plugin updates directly from GitHub. Easy, secure, and developer-friendly.
