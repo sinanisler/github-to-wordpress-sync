@@ -1,0 +1,498 @@
+/**
+ * Admin Styles for Github to WordPress Sync Plugin
+ */
+
+.gtws-admin-wrap {
+    margin: 20px 20px 20px 0;
+}
+
+.gtws-admin-wrap h1 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 28px;
+    margin-bottom: 30px;
+}
+
+.gtws-admin-wrap h1 .dashicons {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+}
+
+/* Container */
+.gtws-container {
+    max-width: 1200px;
+}
+
+/* Card Styles */
+.gtws-card {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    margin-bottom: 25px;
+    padding: 25px;
+}
+
+.gtws-card h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 20px;
+    color: #1d2327;
+}
+
+.gtws-card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+/* Form Styles */
+.gtws-form {
+    max-width: 800px;
+}
+
+.gtws-form-group {
+    margin-bottom: 20px;
+}
+
+.gtws-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.gtws-form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.gtws-form-group label .required {
+    color: #d63638;
+}
+
+.gtws-form-group input[type="text"],
+.gtws-form-group select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.gtws-form-group input[type="text"]:focus,
+.gtws-form-group select:focus {
+    border-color: #2271b1;
+    outline: none;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+
+.gtws-form-group .description {
+    margin: 5px 0 0 0;
+    color: #646970;
+    font-size: 13px;
+}
+
+.gtws-branch-selector {
+    display: flex;
+    gap: 10px;
+}
+
+.gtws-branch-selector input {
+    flex: 1;
+}
+
+.gtws-branch-list {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+}
+
+.gtws-branch-item {
+    padding: 8px 12px;
+    background: #f0f0f1;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.gtws-branch-item:hover {
+    background: #2271b1;
+    color: #fff;
+    border-color: #2271b1;
+}
+
+/* Projects List */
+.gtws-projects-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.gtws-project-item {
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+    background: #f9f9f9;
+    transition: all 0.2s;
+}
+
+.gtws-project-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.gtws-project-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    gap: 20px;
+}
+
+.gtws-project-info {
+    flex: 1;
+}
+
+.gtws-project-info h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 8px 0;
+    font-size: 18px;
+}
+
+.gtws-project-type {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.gtws-type-theme {
+    background: #7c3aed;
+    color: #fff;
+}
+
+.gtws-type-plugin {
+    background: #059669;
+    color: #fff;
+}
+
+.gtws-project-url {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0;
+    color: #646970;
+    font-size: 14px;
+}
+
+.gtws-project-url .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.gtws-project-url a {
+    color: #2271b1;
+    text-decoration: none;
+}
+
+.gtws-project-url a:hover {
+    text-decoration: underline;
+}
+
+.gtws-project-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.gtws-project-actions .button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.gtws-project-actions .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+/* Project Details */
+.gtws-project-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+    background: #fff;
+    border-radius: 4px;
+    border: 1px solid #c3c4c7;
+}
+
+.gtws-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #1d2327;
+}
+
+.gtws-detail-item strong {
+    min-width: 120px;
+}
+
+.gtws-detail-item code {
+    padding: 2px 6px;
+    background: #f0f0f1;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.gtws-branch-badge {
+    padding: 3px 8px;
+    background: #2271b1;
+    color: #fff;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.gtws-commit-message {
+    color: #646970;
+    font-style: italic;
+}
+
+/* Project Status */
+.gtws-project-status {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 4px;
+    display: none;
+}
+
+.gtws-project-status.show {
+    display: block;
+}
+
+.gtws-project-status.success {
+    background: #d1e7dd;
+    border: 1px solid #badbcc;
+    color: #0a3622;
+}
+
+.gtws-project-status.error {
+    background: #f8d7da;
+    border: 1px solid #f5c2c7;
+    color: #58151c;
+}
+
+.gtws-project-status.loading {
+    background: #cfe2ff;
+    border: 1px solid #b6d4fe;
+    color: #052c65;
+}
+
+.gtws-project-status.warning {
+    background: #fff3cd;
+    border: 1px solid #ffecb5;
+    color: #664d03;
+}
+
+/* Empty State */
+.gtws-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #646970;
+}
+
+.gtws-empty-state .dashicons {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    opacity: 0.3;
+}
+
+.gtws-empty-state p {
+    margin: 15px 0 0 0;
+    font-size: 16px;
+}
+
+/* Info Card */
+.gtws-info-card {
+    background: #f0f6fc;
+    border-color: #b6d4fe;
+}
+
+.gtws-info-card ol {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.gtws-info-card ol li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+.gtws-warning {
+    margin-top: 20px;
+    padding: 12px 15px;
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.gtws-warning .dashicons {
+    color: #856404;
+    flex-shrink: 0;
+}
+
+.gtws-warning strong {
+    color: #856404;
+}
+
+/* Button Styles */
+.button-large {
+    height: auto;
+    padding: 10px 20px !important;
+    font-size: 14px !important;
+}
+
+/* Loading Spinner */
+.gtws-loading {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(0,0,0,0.1);
+    border-top-color: #2271b1;
+    border-radius: 50%;
+    animation: gtws-spin 0.6s linear infinite;
+}
+
+@keyframes gtws-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 782px) {
+    .gtws-form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .gtws-project-header {
+        flex-direction: column;
+    }
+    
+    .gtws-project-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .gtws-branch-selector {
+        flex-direction: column;
+    }
+    
+    .gtws-notice {
+        left: 10px;
+        right: 10px;
+        min-width: auto;
+        max-width: none;
+    }
+}
+
+/* Notifications */
+.gtws-notice {
+    position: fixed;
+    top: 32px;
+    right: 20px;
+    min-width: 320px;
+    max-width: 500px;
+    padding: 15px 45px 15px 20px;
+    background: #fff;
+    border-left: 4px solid #00a32a;
+    box-shadow: 0 3px 15px rgba(0,0,0,0.25);
+    z-index: 9999;
+    animation: gtws-slideIn 0.3s ease-out;
+    font-size: 14px;
+    line-height: 1.5;
+    position: relative;
+}
+
+.gtws-notice.error {
+    border-left-color: #d63638;
+    background: #fff5f5;
+}
+
+.gtws-notice.warning {
+    border-left-color: #dba617;
+    background: #fffbf0;
+}
+
+.gtws-notice.success {
+    background: #f0f9ff;
+}
+
+.gtws-notice-content {
+    padding-right: 5px;
+}
+
+.gtws-notice-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: #646970;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 3px;
+    transition: all 0.2s;
+}
+
+.gtws-notice-close:hover {
+    background: rgba(0,0,0,0.05);
+    color: #1d2327;
+}
+
+.gtws-notice-close:focus {
+    outline: 2px solid #2271b1;
+    outline-offset: 1px;
+}
+
+@keyframes gtws-slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes gtws-slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+.gtws-notice.hiding {
+    animation: gtws-slideOut 0.3s ease-out forwards;
+}
