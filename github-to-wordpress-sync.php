@@ -780,9 +780,12 @@ class Github_To_WordPress_Sync {
             
             <div class="gtws-container">
                 <!-- Add New Project Section -->
-                <div class="gtws-card">
-                    <h2><?php _e('Add New Project', 'snn'); ?></h2>
-                    
+                <div class="gtws-card gtws-collapsible-card">
+                    <h2 class="gtws-card-header" data-toggle="collapse">
+                        <span class="gtws-toggle-icon dashicons dashicons-arrow-right"></span>
+                        <?php _e('Add New Project', 'snn'); ?>
+                    </h2>
+                    <div class="gtws-card-content" style="display: none;">
                     <form id="gtws-add-project-form" class="gtws-form">
                         <div class="gtws-form-group">
                             <label for="github_url">
@@ -857,6 +860,7 @@ class Github_To_WordPress_Sync {
                             <?php _e('Add Project', 'snn'); ?>
                         </button>
                     </form>
+                    </div>
                 </div>
                 
                 <!-- Projects List -->
@@ -974,8 +978,12 @@ class Github_To_WordPress_Sync {
                 </div>
                 
                 <!-- Info Section -->
-                <div class="gtws-card gtws-info-card">
-                    <h3><?php _e('How to Use', 'snn'); ?></h3>
+                <div class="gtws-card gtws-info-card gtws-collapsible-card">
+                    <h3 class="gtws-card-header" data-toggle="collapse">
+                        <span class="gtws-toggle-icon dashicons dashicons-arrow-right"></span>
+                        <?php _e('How to Use', 'snn'); ?>
+                    </h3>
+                    <div class="gtws-card-content" style="display: none;">
                     <ol>
                         <li><?php _e('Add your GitHub repository URL (e.g., https://github.com/username/repo)', 'snn'); ?></li>
                         <li><?php _e('Select whether it\'s a theme or plugin', 'snn'); ?></li>
@@ -990,6 +998,7 @@ class Github_To_WordPress_Sync {
                         <span class="dashicons dashicons-warning"></span>
                         <strong><?php _e('Important:', 'snn'); ?></strong>
                         <?php _e('Syncing will overwrite local changes. Make sure to commit your work to GitHub first!', 'snn'); ?>
+                    </div>
                     </div>
                 </div>
             </div>

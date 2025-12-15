@@ -6,7 +6,19 @@
     'use strict';
     
     $(document).ready(function() {
-        
+
+        // Collapsible Card Toggle
+        $('.gtws-card-header[data-toggle="collapse"]').on('click', function() {
+            const $header = $(this);
+            const $content = $header.next('.gtws-card-content');
+
+            // Toggle active class on header
+            $header.toggleClass('active');
+
+            // Slide toggle content
+            $content.slideToggle(300);
+        });
+
         // Add Project Form Submit
         $('#gtws-add-project-form').on('submit', function(e) {
             e.preventDefault();
@@ -36,7 +48,15 @@
                         $form[0].reset();
                         $('#branch').val('main');
                         $('#branch-list').empty();
-                        
+
+                        // Collapse the "Add New Project" section before reload
+                        const $addProjectCard = $form.closest('.gtws-collapsible-card');
+                        const $header = $addProjectCard.find('.gtws-card-header');
+                        const $content = $addProjectCard.find('.gtws-card-content');
+
+                        $header.removeClass('active');
+                        $content.slideUp(300);
+
                         // Reload page after short delay to show new project
                         setTimeout(function() {
                             location.reload();
