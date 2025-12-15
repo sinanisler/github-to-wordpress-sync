@@ -1,10 +1,12 @@
 # Github to WordPress Sync
 
-GitHub to WordPress Sync: Streamline theme & plugin updates directly from GitHub. Easy, secure, and developer-friendly.
-
 <a href="https://github.com/sponsors/sinanisler">
 <img src="https://img.shields.io/badge/Consider_Supporting_My_Projects_❤-GitHub-d46" width="300" height="auto" />
 </a>
+
+
+GitHub to WordPress Sync: Streamline theme & plugin updates directly from GitHub. Easy, secure, and developer-friendly.
+
 
 
 ## Features
