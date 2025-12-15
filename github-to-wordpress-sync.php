@@ -1236,7 +1236,7 @@ class Github_To_WordPress_Sync {
 
         // Get commit history from GitHub
         $github_api = new GTWS_Github_API();
-        $commit_history = $github_api->get_commit_history($project['github_url'], $project['branch'], 20);
+        $commit_history = $github_api->get_commit_history($project['github_url'], $project['branch'], 50);
 
         if ($commit_history === false) {
             wp_send_json_error('Failed to fetch commit history');
