@@ -3,7 +3,7 @@
  * Plugin Name: Github to WordPress Sync
  * Plugin URI: https://sinanisler.com
  * Description: GitHub to WordPress Sync: Streamline theme & plugin updates directly from GitHub. Easy, secure, and developer-friendly.
- * Version: 1.0.0
+ * Version: 0.1
  * Author: Sinan Isler
  * Author URI: https://sinanisler.com/
  * License: GPL v2 or later
@@ -17,7 +17,6 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('GTWS_VERSION', '1.0.0');
 define('GTWS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GTWS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('GTWS_PLUGIN_FILE', __FILE__);
@@ -87,9 +86,6 @@ class Github_To_WordPress_Sync {
         if (!get_option('gtws_projects')) {
             add_option('gtws_projects', array());
         }
-        
-        // Set default options
-        add_option('gtws_version', GTWS_VERSION);
     }
     
     /**
@@ -120,22 +116,29 @@ class Github_To_WordPress_Sync {
         if ($hook !== 'settings_page_github-to-wordpress-sync') {
             return;
         }
-        
+
+        // Get version from plugin header
+        if (!function_exists('get_plugin_data')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        $plugin_data = get_plugin_data(GTWS_PLUGIN_FILE);
+        $version = $plugin_data['Version'];
+
         wp_enqueue_style(
             'gtws-admin-style',
             GTWS_PLUGIN_URL . 'assets/css/admin.css',
             array(),
-            GTWS_VERSION
+            $version
         );
-        
+
         wp_enqueue_script(
             'gtws-admin-script',
             GTWS_PLUGIN_URL . 'assets/js/admin.js',
             array('jquery'),
-            GTWS_VERSION,
+            $version,
             true
         );
-        
+
         wp_localize_script('gtws-admin-script', 'gtws_ajax', array(
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('gtws_nonce'),

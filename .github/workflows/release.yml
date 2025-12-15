@@ -1,0 +1,71 @@
+name: Plugin Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
+
+      - name: Get current version
+        id: get_version
+        run: |
+          version=$(grep -oP 'Version:\s*\K[0-9.]+' github-to-wordpress-sync.php)
+          echo "Current version: $version"
+          echo "version=$version" >> $GITHUB_ENV
+
+      - name: Bump version if release
+        if: contains(github.event.head_commit.message, 'release')
+        run: |
+          current_version=$(grep -oP 'Version:\s*\K[0-9.]+' github-to-wordpress-sync.php)
+          next_version=$(awk -F. '{print $1 "." ($2+1)}' <<< "$current_version")
+          sed -i "s/Version: $current_version/Version: $next_version/" github-to-wordpress-sync.php
+          echo "new_version=$next_version" >> $GITHUB_ENV
+
+      - name: Commit version bump
+        if: contains(github.event.head_commit.message, 'release')
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add github-to-wordpress-sync.php
+          git commit -m "Bump version to ${{ env.new_version }}"
+          git push
+
+      - name: Create zip file
+        run: |
+          mkdir -p github-to-wordpress-sync
+          rsync -av --exclude='.git' --exclude='.github' --exclude='github-to-wordpress-sync' ./ github-to-wordpress-sync/
+          zip -r github-to-wordpress-sync.zip github-to-wordpress-sync
+          rm -rf github-to-wordpress-sync
+
+      - name: Create GitHub Release
+        if: contains(github.event.head_commit.message, 'release')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: github-to-wordpress-sync.zip
+          tag_name: "v${{ env.new_version }}"
+          name: "Release v${{ env.new_version }}"
+          body: "Release v${{ env.new_version }} of the plugin."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Pre-release
+        if: contains(github.event.head_commit.message, 'alphatag')
+        uses: softprops/action-gh-release@v1
+        with:
+          prerelease: true
+          files: github-to-wordpress-sync.zip
+          tag_name: "pre-v${{ env.version }}"
+          name: "Pre-release v${{ env.version }}"
+          body: "Pre-release v${{ env.version }} of the plugin."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
