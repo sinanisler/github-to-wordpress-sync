@@ -324,7 +324,7 @@
         $('#github_url').on('blur', function() {
             const url = $(this).val();
             const $projectName = $('#project_name');
-            
+
             // Only auto-fill if project name is empty
             if (!$projectName.val() && url) {
                 const match = url.match(/github\.com\/[^\/]+\/([^\/]+)/);
@@ -334,7 +334,200 @@
                 }
             }
         });
-        
+
+        // View Commit History
+        $(document).on('click', '.gtws-view-history', function() {
+            const $btn = $(this);
+            const projectId = $btn.data('project-id');
+            const $projectItem = $btn.closest('.gtws-project-item');
+            const $historySection = $projectItem.find('.gtws-commit-history');
+            const $timeline = $historySection.find('.gtws-history-timeline');
+
+            // Toggle visibility
+            if ($historySection.is(':visible')) {
+                $historySection.slideUp(300);
+                $btn.removeClass('active');
+                return;
+            }
+
+            const originalText = $btn.html();
+            $btn.prop('disabled', true).html('<span class="gtws-loading"></span> Loading...');
+
+            $.post(gtws_ajax.ajax_url, {
+                action: 'gtws_get_commit_history',
+                nonce: gtws_ajax.nonce,
+                project_id: projectId
+            })
+            .done(function(response) {
+                if (response.success) {
+                    displayCommitHistory($timeline, response.data, projectId);
+                    $historySection.slideDown(300);
+                    $btn.addClass('active');
+                } else {
+                    showNotice('❌ Error: ' + response.data, 'error', true);
+                }
+            })
+            .fail(function() {
+                showNotice('❌ Failed to fetch commit history', 'error', true);
+            })
+            .always(function() {
+                $btn.prop('disabled', false).html(originalText);
+            });
+        });
+
+        // Display commit history timeline
+        function displayCommitHistory($timeline, data, projectId) {
+            $timeline.empty();
+
+            const commits = data.commit_history || [];
+            const syncHistory = data.sync_history || [];
+            const currentCommit = data.current_commit;
+
+            if (commits.length === 0) {
+                $timeline.html('<p class="gtws-no-history">No commit history available</p>');
+                return;
+            }
+
+            // Create sync history map for quick lookup
+            const syncMap = {};
+            syncHistory.forEach(function(sync) {
+                syncMap[sync.commit_sha] = sync.synced_at;
+            });
+
+            commits.forEach(function(commit, index) {
+                const isCurrent = commit.sha === currentCommit;
+                const wasSynced = syncMap[commit.sha];
+
+                const $item = $('<div>').addClass('gtws-timeline-item');
+
+                if (isCurrent) {
+                    $item.addClass('current');
+                }
+
+                // Timeline marker
+                const $marker = $('<div>').addClass('gtws-timeline-marker');
+                if (isCurrent) {
+                    $marker.append('<span class="dashicons dashicons-yes-alt"></span>');
+                } else if (wasSynced) {
+                    $marker.append('<span class="dashicons dashicons-backup"></span>');
+                } else {
+                    $marker.append('<span class="dashicons dashicons-marker"></span>');
+                }
+
+                // Timeline content
+                const $content = $('<div>').addClass('gtws-timeline-content');
+
+                const $header = $('<div>').addClass('gtws-commit-header');
+                $header.append(
+                    $('<code>').addClass('gtws-commit-sha').text(commit.sha.substring(0, 7))
+                );
+                $header.append(
+                    $('<span>').addClass('gtws-commit-author').text('by ' + commit.author)
+                );
+
+                if (isCurrent) {
+                    $header.append(
+                        $('<span>').addClass('gtws-current-badge').text('Current')
+                    );
+                }
+
+                const $message = $('<div>')
+                    .addClass('gtws-commit-message')
+                    .text(commit.message);
+
+                const $date = $('<div>')
+                    .addClass('gtws-commit-date')
+                    .text(formatDate(commit.date));
+
+                if (wasSynced) {
+                    const $syncInfo = $('<div>')
+                        .addClass('gtws-sync-info')
+                        .html('<span class="dashicons dashicons-backup"></span> Synced on ' + formatDate(wasSynced));
+                    $date.append($syncInfo);
+                }
+
+                $content.append($header, $message, $date);
+
+                // Restore button (only if not current)
+                if (!isCurrent) {
+                    const $restoreBtn = $('<button>')
+                        .addClass('button gtws-restore-commit')
+                        .attr('data-project-id', projectId)
+                        .attr('data-commit-sha', commit.sha)
+                        .attr('title', 'Restore to this commit - This will replace your current files!')
+                        .html('<span class="dashicons dashicons-backup"></span> Restore');
+
+                    $content.append($restoreBtn);
+                }
+
+                $item.append($marker, $content);
+                $timeline.append($item);
+            });
+        }
+
+        // Restore to specific commit
+        $(document).on('click', '.gtws-restore-commit', function() {
+            const $btn = $(this);
+            const projectId = $btn.data('project-id');
+            const commitSha = $btn.data('commit-sha');
+            const $projectItem = $btn.closest('.gtws-project-item');
+            const $status = $projectItem.find('.gtws-project-status');
+
+            const confirmMsg = 'Are you sure you want to restore to this commit?\n\n' +
+                               'Commit: ' + commitSha.substring(0, 7) + '\n\n' +
+                               'WARNING: This will REPLACE your current files with this commit!\n' +
+                               'Make sure you have committed any local changes to GitHub first.';
+
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+
+            const originalText = $btn.html();
+            $btn.prop('disabled', true).html('<span class="gtws-loading"></span> Restoring...');
+
+            // Disable all buttons in project
+            $projectItem.find('button').prop('disabled', true);
+
+            $status.removeClass('success error warning').addClass('loading show')
+                .html('Restoring to commit ' + commitSha.substring(0, 7) + '... This may take a moment.');
+
+            $.post(gtws_ajax.ajax_url, {
+                action: 'gtws_restore_commit',
+                nonce: gtws_ajax.nonce,
+                project_id: projectId,
+                commit_sha: commitSha
+            })
+            .done(function(response) {
+                if (response.success) {
+                    $status.removeClass('loading').addClass('success')
+                        .html(`
+                            <strong>✓ Restore Completed Successfully!</strong><br>
+                            ${response.data.message}<br>
+                            Restored to commit: <code>${commitSha.substring(0, 7)}</code>
+                        `);
+                    showNotice('Project restored to commit ' + commitSha.substring(0, 7) + ' successfully!', 'success');
+
+                    // Reload page after short delay
+                    setTimeout(function() {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    $status.removeClass('loading').addClass('error')
+                        .html('<strong>Restore Failed:</strong> ' + response.data);
+                    showNotice('❌ Restore failed: ' + response.data, 'error', true);
+                    $btn.prop('disabled', false).html(originalText);
+                    $projectItem.find('button').prop('disabled', false);
+                }
+            })
+            .fail(function() {
+                $status.removeClass('loading').addClass('error')
+                    .html('<strong>Error:</strong> Failed to restore commit');
+                showNotice('❌ Failed to restore commit. Please check your connection and try again.', 'error', true);
+                $btn.prop('disabled', false).html(originalText);
+                $projectItem.find('button').prop('disabled', false);
+            });
+        });
+
     });
-    
+
 })(jQuery);

@@ -223,28 +223,28 @@ class GTWS_Github_API {
      */
     public function get_commits_between($repo_url, $branch, $since_commit = null) {
         $repo_info = $this->parse_github_url($repo_url);
-        
+
         if (!$repo_info) {
             return false;
         }
-        
+
         $api_url = sprintf(
             'https://api.github.com/repos/%s/%s/commits?sha=%s',
             $repo_info['owner'],
             $repo_info['repo'],
             $branch
         );
-        
+
         if ($since_commit) {
             $api_url .= '&since=' . urlencode($since_commit);
         }
-        
+
         $response = $this->make_api_request($api_url);
-        
+
         if (!$response || !is_array($response)) {
             return false;
         }
-        
+
         $commits = array();
         foreach ($response as $commit) {
             if (isset($commit['sha'])) {
@@ -256,8 +256,90 @@ class GTWS_Github_API {
                 );
             }
         }
-        
+
         return $commits;
+    }
+
+    /**
+     * Get commit history for a branch (limited to recent commits)
+     */
+    public function get_commit_history($repo_url, $branch = 'main', $per_page = 20) {
+        $repo_info = $this->parse_github_url($repo_url);
+
+        if (!$repo_info) {
+            return false;
+        }
+
+        $api_url = sprintf(
+            'https://api.github.com/repos/%s/%s/commits?sha=%s&per_page=%d',
+            $repo_info['owner'],
+            $repo_info['repo'],
+            $branch,
+            $per_page
+        );
+
+        $response = $this->make_api_request($api_url);
+
+        if (!$response || !is_array($response)) {
+            return false;
+        }
+
+        $commits = array();
+        foreach ($response as $commit) {
+            if (isset($commit['sha'])) {
+                $commits[] = array(
+                    'sha' => $commit['sha'],
+                    'message' => isset($commit['commit']['message']) ? $commit['commit']['message'] : '',
+                    'date' => isset($commit['commit']['committer']['date']) ? $commit['commit']['committer']['date'] : '',
+                    'author' => isset($commit['commit']['author']['name']) ? $commit['commit']['author']['name'] : '',
+                );
+            }
+        }
+
+        return $commits;
+    }
+
+    /**
+     * Download repository at specific commit
+     */
+    public function download_repository_at_commit($repo_url, $commit_sha) {
+        $repo_info = $this->parse_github_url($repo_url);
+
+        if (!$repo_info) {
+            return false;
+        }
+
+        // GitHub archive URL for specific commit
+        $download_url = sprintf(
+            'https://github.com/%s/%s/archive/%s.zip',
+            $repo_info['owner'],
+            $repo_info['repo'],
+            $commit_sha
+        );
+
+        // Create temporary file
+        $temp_file = wp_tempnam('gtws-repo-');
+
+        // Download the file
+        $response = wp_remote_get($download_url, array(
+            'timeout' => 300,
+            'stream' => true,
+            'filename' => $temp_file
+        ));
+
+        if (is_wp_error($response)) {
+            @unlink($temp_file);
+            return false;
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+
+        if ($response_code !== 200) {
+            @unlink($temp_file);
+            return false;
+        }
+
+        return $temp_file;
     }
 }
 
@@ -274,26 +356,33 @@ class GTWS_Sync_Manager {
     }
     
     /**
-     * Sync a project from GitHub
+     * Sync a project from GitHub (to latest commit or specific commit)
      */
-    public function sync_project($project) {
+    public function sync_project($project, $commit_sha = null) {
         try {
             // Download repository
-            $zip_file = $this->github_api->download_repository(
-                $project['github_url'],
-                $project['branch']
-            );
-            
+            if ($commit_sha) {
+                $zip_file = $this->github_api->download_repository_at_commit(
+                    $project['github_url'],
+                    $commit_sha
+                );
+            } else {
+                $zip_file = $this->github_api->download_repository(
+                    $project['github_url'],
+                    $project['branch']
+                );
+            }
+
             if (!$zip_file) {
                 return array(
                     'success' => false,
                     'message' => 'Failed to download repository from GitHub'
                 );
             }
-            
+
             // Determine target directory
             $target_dir = $this->get_target_directory($project['project_type'], $project['project_name']);
-            
+
             if (!$target_dir) {
                 @unlink($zip_file);
                 return array(
@@ -301,15 +390,15 @@ class GTWS_Sync_Manager {
                     'message' => 'Invalid project type'
                 );
             }
-            
+
             // Extract and sync
-            $result = $this->extract_and_sync($zip_file, $target_dir, $project);
-            
+            $result = $this->extract_and_sync($zip_file, $target_dir, $project, $commit_sha);
+
             // Clean up temp file
             @unlink($zip_file);
-            
+
             return $result;
-            
+
         } catch (Exception $e) {
             return array(
                 'success' => false,
@@ -335,19 +424,19 @@ class GTWS_Sync_Manager {
     /**
      * Extract ZIP and sync to target directory
      */
-    private function extract_and_sync($zip_file, $target_dir, $project) {
+    private function extract_and_sync($zip_file, $target_dir, $project, $commit_sha = null) {
         // Load WordPress filesystem
         WP_Filesystem();
         global $wp_filesystem;
-        
+
         // Create temporary extraction directory
         $temp_dir = wp_tempnam('gtws-extract-');
         @unlink($temp_dir);
         wp_mkdir_p($temp_dir);
-        
+
         // Extract ZIP file
         $unzip_result = unzip_file($zip_file, $temp_dir);
-        
+
         if (is_wp_error($unzip_result)) {
             $this->cleanup_directory($temp_dir);
             return array(
@@ -355,10 +444,10 @@ class GTWS_Sync_Manager {
                 'message' => 'Failed to extract ZIP file: ' . $unzip_result->get_error_message()
             );
         }
-        
-        // Find the extracted folder (GitHub creates a folder with repo-branch name)
+
+        // Find the extracted folder (GitHub creates a folder with repo-branch name or repo-commit)
         $extracted_folders = glob($temp_dir . '/*', GLOB_ONLYDIR);
-        
+
         if (empty($extracted_folders)) {
             $this->cleanup_directory($temp_dir);
             return array(
@@ -366,36 +455,31 @@ class GTWS_Sync_Manager {
                 'message' => 'No folder found in extracted archive'
             );
         }
-        
+
         $source_dir = $extracted_folders[0];
-        
-        // Backup existing directory if it exists
-        $backup_result = $this->backup_existing_directory($target_dir);
-        
-        // Create target directory if it doesn't exist
-        if (!file_exists($target_dir)) {
-            wp_mkdir_p($target_dir);
+
+        // Remove existing directory completely (no backup - we have Git history!)
+        if (file_exists($target_dir)) {
+            $this->cleanup_directory($target_dir);
         }
-        
+
+        // Create target directory
+        wp_mkdir_p($target_dir);
+
         // Sync files from source to target
         $sync_result = $this->sync_directories($source_dir, $target_dir);
-        
+
         // Clean up temp directory
         $this->cleanup_directory($temp_dir);
-        
+
         if ($sync_result) {
             return array(
                 'success' => true,
                 'message' => 'Project synced successfully!',
-                'backup' => $backup_result,
-                'target_dir' => $target_dir
+                'target_dir' => $target_dir,
+                'commit_sha' => $commit_sha
             );
         } else {
-            // Restore backup if sync failed
-            if ($backup_result) {
-                $this->restore_backup($target_dir, $backup_result);
-            }
-            
             return array(
                 'success' => false,
                 'message' => 'Failed to sync files'
@@ -442,38 +526,56 @@ class GTWS_Sync_Manager {
     }
     
     /**
-     * Backup existing directory
+     * Get sync history for a project (stored in project data)
      */
-    private function backup_existing_directory($dir) {
-        if (!file_exists($dir)) {
+    public function get_sync_history($project_id) {
+        $projects = get_option('gtws_projects', array());
+        $project_index = array_search($project_id, array_column($projects, 'id'));
+
+        if ($project_index === false) {
             return false;
         }
-        
-        $backup_dir = $dir . '-backup-' . date('YmdHis');
-        
-        // Use rename for quick backup
-        if (@rename($dir, $backup_dir)) {
-            return $backup_dir;
-        }
-        
-        return false;
+
+        $project = $projects[$project_index];
+
+        // Get sync history from project data
+        return isset($project['sync_history']) ? $project['sync_history'] : array();
     }
-    
+
     /**
-     * Restore backup
+     * Add sync record to project history
      */
-    private function restore_backup($target_dir, $backup_dir) {
-        if (!file_exists($backup_dir)) {
+    public function add_sync_record($project_id, $commit_sha, $commit_message, $commit_date) {
+        $projects = get_option('gtws_projects', array());
+        $project_index = array_search($project_id, array_column($projects, 'id'));
+
+        if ($project_index === false) {
             return false;
         }
-        
-        // Remove failed target
-        if (file_exists($target_dir)) {
-            $this->cleanup_directory($target_dir);
+
+        // Initialize sync history if not exists
+        if (!isset($projects[$project_index]['sync_history'])) {
+            $projects[$project_index]['sync_history'] = array();
         }
-        
-        // Restore backup
-        return @rename($backup_dir, $target_dir);
+
+        // Add new sync record at the beginning (most recent first)
+        array_unshift($projects[$project_index]['sync_history'], array(
+            'commit_sha' => $commit_sha,
+            'commit_message' => $commit_message,
+            'commit_date' => $commit_date,
+            'synced_at' => current_time('mysql')
+        ));
+
+        // Keep only last 20 sync records
+        $projects[$project_index]['sync_history'] = array_slice(
+            $projects[$project_index]['sync_history'],
+            0,
+            20
+        );
+
+        update_option('gtws_projects', $projects);
+
+        return true;
     }
     
     /**
@@ -547,74 +649,6 @@ class GTWS_Sync_Manager {
         );
     }
     
-    /**
-     * Get backup list for a project
-     */
-    public function get_backups($type, $name) {
-        $target_dir = $this->get_target_directory($type, $name);
-        
-        if (!$target_dir) {
-            return array();
-        }
-        
-        $parent_dir = dirname($target_dir);
-        $project_name = basename($target_dir);
-        
-        $backups = glob($parent_dir . '/' . $project_name . '-backup-*');
-        
-        $backup_list = array();
-        foreach ($backups as $backup) {
-            $backup_list[] = array(
-                'path' => $backup,
-                'name' => basename($backup),
-                'date' => date('Y-m-d H:i:s', filemtime($backup)),
-                'size' => $this->get_directory_size($backup)
-            );
-        }
-        
-        // Sort by date, newest first
-        usort($backup_list, function($a, $b) {
-            return strtotime($b['date']) - strtotime($a['date']);
-        });
-        
-        return $backup_list;
-    }
-    
-    /**
-     * Get directory size
-     */
-    private function get_directory_size($dir) {
-        $size = 0;
-        
-        if (!is_dir($dir)) {
-            return 0;
-        }
-        
-        $items = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)
-        );
-        
-        foreach ($items as $item) {
-            $size += $item->getSize();
-        }
-        
-        return $this->format_bytes($size);
-    }
-    
-    /**
-     * Format bytes to human readable
-     */
-    private function format_bytes($bytes, $precision = 2) {
-        $units = array('B', 'KB', 'MB', 'GB', 'TB');
-        
-        $bytes = max($bytes, 0);
-        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-        $pow = min($pow, count($units) - 1);
-        
-        $bytes /= pow(1024, $pow);
-        
-        return round($bytes, $precision) . ' ' . $units[$pow];
-    }
 }
 
 /**
@@ -661,6 +695,8 @@ class Github_To_WordPress_Sync {
         add_action('wp_ajax_gtws_check_updates', array($this, 'ajax_check_updates'));
         add_action('wp_ajax_gtws_sync_project', array($this, 'ajax_sync_project'));
         add_action('wp_ajax_gtws_get_branches', array($this, 'ajax_get_branches'));
+        add_action('wp_ajax_gtws_get_commit_history', array($this, 'ajax_get_commit_history'));
+        add_action('wp_ajax_gtws_restore_commit', array($this, 'ajax_restore_commit'));
     }
     
     /**
@@ -853,24 +889,32 @@ class Github_To_WordPress_Sync {
                                         </div>
                                         
                                         <div class="gtws-project-actions">
-                                            <button 
-                                                class="button gtws-check-update" 
+                                            <button
+                                                class="button gtws-view-history"
+                                                data-project-id="<?php echo esc_attr($project['id']); ?>"
+                                            >
+                                                <span class="dashicons dashicons-backup"></span>
+                                                <?php _e('History', 'snn'); ?>
+                                            </button>
+
+                                            <button
+                                                class="button gtws-check-update"
                                                 data-project-id="<?php echo esc_attr($project['id']); ?>"
                                             >
                                                 <span class="dashicons dashicons-update"></span>
                                                 <?php _e('Check Update', 'snn'); ?>
                                             </button>
-                                            
-                                            <button 
-                                                class="button button-primary gtws-sync-project" 
+
+                                            <button
+                                                class="button button-primary gtws-sync-project"
                                                 data-project-id="<?php echo esc_attr($project['id']); ?>"
                                             >
                                                 <span class="dashicons dashicons-download"></span>
                                                 <?php _e('Sync Now', 'snn'); ?>
                                             </button>
-                                            
-                                            <button 
-                                                class="button button-link-delete gtws-delete-project" 
+
+                                            <button
+                                                class="button button-link-delete gtws-delete-project"
                                                 data-project-id="<?php echo esc_attr($project['id']); ?>"
                                             >
                                                 <span class="dashicons dashicons-trash"></span>
@@ -913,8 +957,16 @@ class Github_To_WordPress_Sync {
                                             </div>
                                         <?php endif; ?>
                                     </div>
-                                    
+
                                     <div class="gtws-project-status"></div>
+
+                                    <!-- Commit History Section (Hidden by default) -->
+                                    <div class="gtws-commit-history" style="display: none;">
+                                        <h4><?php _e('Commit History', 'snn'); ?></h4>
+                                        <div class="gtws-history-timeline">
+                                            <!-- Timeline will be populated via JavaScript -->
+                                        </div>
+                                    </div>
                                 </div>
                             <?php endforeach; ?>
                         </div>
@@ -1079,31 +1131,39 @@ class Github_To_WordPress_Sync {
      */
     public function ajax_sync_project() {
         check_ajax_referer('gtws_nonce', 'nonce');
-        
+
         if (!current_user_can('manage_options')) {
             wp_send_json_error('Unauthorized');
         }
-        
+
         $project_id = sanitize_text_field($_POST['project_id']);
-        
+
         $projects = get_option('gtws_projects', array());
         $project_index = array_search($project_id, array_column($projects, 'id'));
-        
+
         if ($project_index === false) {
             wp_send_json_error('Project not found');
         }
-        
+
         $project = $projects[$project_index];
-        
+
         // Perform sync
         $sync_manager = new GTWS_Sync_Manager();
         $result = $sync_manager->sync_project($project);
-        
+
         if ($result['success']) {
             $projects[$project_index]['last_sync'] = current_time('mysql');
             $projects[$project_index]['last_sync_commit'] = $project['last_commit'];
             update_option('gtws_projects', $projects);
-            
+
+            // Add to sync history
+            $sync_manager->add_sync_record(
+                $project_id,
+                $project['last_commit'],
+                $project['commit_message'],
+                $project['commit_date']
+            );
+
             wp_send_json_success(array(
                 'message' => 'Sync completed successfully!',
                 'details' => $result
@@ -1144,6 +1204,110 @@ class Github_To_WordPress_Sync {
         }
     }
     
+    /**
+     * AJAX: Get commit history
+     */
+    public function ajax_get_commit_history() {
+        check_ajax_referer('gtws_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $project_id = sanitize_text_field($_POST['project_id']);
+
+        $projects = get_option('gtws_projects', array());
+        $project_index = array_search($project_id, array_column($projects, 'id'));
+
+        if ($project_index === false) {
+            wp_send_json_error('Project not found');
+        }
+
+        $project = $projects[$project_index];
+
+        // Get commit history from GitHub
+        $github_api = new GTWS_Github_API();
+        $commit_history = $github_api->get_commit_history($project['github_url'], $project['branch'], 20);
+
+        if ($commit_history === false) {
+            wp_send_json_error('Failed to fetch commit history');
+        }
+
+        // Get sync history
+        $sync_manager = new GTWS_Sync_Manager();
+        $sync_history = $sync_manager->get_sync_history($project_id);
+
+        wp_send_json_success(array(
+            'commit_history' => $commit_history,
+            'sync_history' => $sync_history,
+            'current_commit' => isset($project['last_sync_commit']) ? $project['last_sync_commit'] : null
+        ));
+    }
+
+    /**
+     * AJAX: Restore to specific commit
+     */
+    public function ajax_restore_commit() {
+        check_ajax_referer('gtws_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $project_id = sanitize_text_field($_POST['project_id']);
+        $commit_sha = sanitize_text_field($_POST['commit_sha']);
+
+        $projects = get_option('gtws_projects', array());
+        $project_index = array_search($project_id, array_column($projects, 'id'));
+
+        if ($project_index === false) {
+            wp_send_json_error('Project not found');
+        }
+
+        $project = $projects[$project_index];
+
+        // Get commit info from GitHub
+        $github_api = new GTWS_Github_API();
+        $commit_history = $github_api->get_commit_history($project['github_url'], $project['branch'], 50);
+
+        $commit_info = null;
+        foreach ($commit_history as $commit) {
+            if ($commit['sha'] === $commit_sha) {
+                $commit_info = $commit;
+                break;
+            }
+        }
+
+        if (!$commit_info) {
+            wp_send_json_error('Commit not found');
+        }
+
+        // Perform sync to specific commit
+        $sync_manager = new GTWS_Sync_Manager();
+        $result = $sync_manager->sync_project($project, $commit_sha);
+
+        if ($result['success']) {
+            $projects[$project_index]['last_sync'] = current_time('mysql');
+            $projects[$project_index]['last_sync_commit'] = $commit_sha;
+            update_option('gtws_projects', $projects);
+
+            // Add to sync history
+            $sync_manager->add_sync_record(
+                $project_id,
+                $commit_sha,
+                $commit_info['message'],
+                $commit_info['date']
+            );
+
+            wp_send_json_success(array(
+                'message' => 'Restored to commit successfully!',
+                'details' => $result
+            ));
+        } else {
+            wp_send_json_error($result['message']);
+        }
+    }
+
     /**
      * Validate GitHub URL
      */

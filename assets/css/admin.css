@@ -496,3 +496,249 @@
 .gtws-notice.hiding {
     animation: gtws-slideOut 0.3s ease-out forwards;
 }
+
+/* Commit History Timeline */
+.gtws-commit-history {
+    margin-top: 20px;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+}
+
+.gtws-commit-history h4 {
+    margin: 0 0 20px 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #2271b1;
+    color: #1d2327;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.gtws-history-timeline {
+    position: relative;
+    padding-left: 40px;
+}
+
+.gtws-history-timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 8px;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, #2271b1, #c3c4c7);
+}
+
+.gtws-timeline-item {
+    position: relative;
+    padding-bottom: 25px;
+    margin-bottom: 15px;
+}
+
+.gtws-timeline-item:last-child {
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+.gtws-timeline-marker {
+    position: absolute;
+    left: -40px;
+    top: 0;
+    width: 32px;
+    height: 32px;
+    background: #fff;
+    border: 3px solid #c3c4c7;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
+.gtws-timeline-item.current .gtws-timeline-marker {
+    background: #2271b1;
+    border-color: #2271b1;
+}
+
+.gtws-timeline-marker .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #8c8f94;
+}
+
+.gtws-timeline-item.current .gtws-timeline-marker .dashicons {
+    color: #fff;
+}
+
+.gtws-timeline-content {
+    background: #f9f9f9;
+    border: 1px solid #c3c4c7;
+    border-radius: 6px;
+    padding: 15px;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.gtws-timeline-item.current .gtws-timeline-content {
+    background: #e7f3ff;
+    border-color: #2271b1;
+    box-shadow: 0 2px 8px rgba(34, 113, 177, 0.15);
+}
+
+.gtws-timeline-content:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.gtws-commit-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.gtws-commit-sha {
+    padding: 4px 8px;
+    background: #1d2327;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.gtws-commit-author {
+    color: #646970;
+    font-size: 13px;
+}
+
+.gtws-current-badge {
+    padding: 4px 10px;
+    background: #2271b1;
+    color: #fff;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.gtws-commit-message {
+    color: #1d2327;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.gtws-commit-date {
+    color: #646970;
+    font-size: 12px;
+    margin-bottom: 10px;
+}
+
+.gtws-sync-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 10px;
+    padding: 3px 8px;
+    background: #d1e7dd;
+    color: #0a3622;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.gtws-sync-info .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+}
+
+.gtws-restore-commit {
+    margin-top: 10px;
+    background: #fff;
+    border: 1px solid #2271b1;
+    color: #2271b1;
+    font-size: 13px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.gtws-restore-commit:hover {
+    background: #2271b1;
+    color: #fff;
+}
+
+.gtws-restore-commit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.gtws-restore-commit .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.gtws-no-history {
+    text-align: center;
+    padding: 40px 20px;
+    color: #646970;
+    font-style: italic;
+}
+
+.gtws-view-history.active {
+    background: #2271b1;
+    color: #fff;
+    border-color: #2271b1;
+}
+
+.gtws-view-history.active:hover {
+    background: #135e96;
+    border-color: #135e96;
+}
+
+/* Timeline animation */
+.gtws-timeline-item {
+    animation: gtws-fadeIn 0.4s ease-out;
+}
+
+@keyframes gtws-fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive timeline */
+@media (max-width: 782px) {
+    .gtws-history-timeline {
+        padding-left: 35px;
+    }
+
+    .gtws-timeline-marker {
+        left: -35px;
+        width: 28px;
+        height: 28px;
+    }
+
+    .gtws-timeline-marker .dashicons {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+    }
+
+    .gtws-commit-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+}
