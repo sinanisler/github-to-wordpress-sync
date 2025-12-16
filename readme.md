@@ -17,6 +17,5 @@ GitHub to WordPress Sync: Streamline theme & plugin updates directly from GitHub
 - 🌿 **Branch Selection** - Choose which branch to sync from
 - 🔄 **Update Checking** - Check for new commits before syncing
 - 📦 **One-Click Sync** - Download and update with a single click
-- 💾 **Automatic Backups** - Creates backups before syncing
-- 📊 **Commit Tracking** - View latest commit information
-- ⚙️ **Settings Page** - Clean admin interface under Settings menu
+- 💾 **Commit Restore** - Possible to restore to any commit
+- 📊 **Commit Tracking** - View latest commit informations
