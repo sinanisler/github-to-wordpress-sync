@@ -4,7 +4,7 @@
  * Plugin URI: https://sinanisler.com
  * Description: GitHub to WordPress Sync: Streamline theme & plugin updates directly from GitHub. Easy, secure, and developer-friendly.
  * Version: 0.6
- * Author: Sinan Isler
+ * Author: sinanisler
  * Author URI: https://sinanisler.com/
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
