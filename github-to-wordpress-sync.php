@@ -1,4 +1,4 @@
-<?php
+<?php 
 /**     
  * Plugin Name: Github to WordPress Sync
  * Plugin URI: https://github.com/sinanisler/github-to-wordpress-sync
