@@ -947,14 +947,14 @@ class Github_To_WordPress_Sync {
                                         <?php if (!empty($project['commit_date'])): ?>
                                             <div class="gtws-detail-item">
                                                 <strong><?php _e('Commit Date:', 'snn'); ?></strong>
-                                                <?php echo esc_html(date('F j, Y g:i a', strtotime($project['commit_date']))); ?>
+                                                <?php echo esc_html(wp_date('F j, Y g:i a', strtotime($project['commit_date']))); ?>
                                             </div>
                                         <?php endif; ?>
-                                        
+
                                         <?php if (!empty($project['last_sync'])): ?>
                                             <div class="gtws-detail-item">
                                                 <strong><?php _e('Last Sync:', 'snn'); ?></strong>
-                                                <?php echo esc_html(date('F j, Y g:i a', strtotime($project['last_sync']))); ?>
+                                                <?php echo esc_html(wp_date('F j, Y g:i a', strtotime($project['last_sync']))); ?>
                                                 <?php if (!empty($project['last_sync_commit'])): ?>
                                                     <code><?php echo esc_html(substr($project['last_sync_commit'], 0, 7)); ?></code>
                                                 <?php endif; ?>
