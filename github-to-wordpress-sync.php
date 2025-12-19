@@ -194,12 +194,6 @@ class GTWS_Github_API {
             )
         );
         
-        // Add GitHub token if available (for private repos or higher rate limits)
-        $github_token = get_option('gtws_github_token');
-        if ($github_token) {
-            $args['headers']['Authorization'] = 'token ' . $github_token;
-        }
-        
         $response = wp_remote_get($url, $args);
         
         if (is_wp_error($response)) {
