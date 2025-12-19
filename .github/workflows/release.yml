@@ -47,6 +47,35 @@ jobs:
           zip -r github-to-wordpress-sync.zip github-to-wordpress-sync
           rm -rf github-to-wordpress-sync
 
+      - name: Generate changelog
+        if: contains(github.event.head_commit.message, 'release')
+        id: changelog
+        run: |
+          # Get the previous release tag
+          previous_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          if [ -z "$previous_tag" ]; then
+            # If no previous tag, get all commits
+            changelog=$(git log --pretty=format:"- %s (%h)" --reverse)
+          else
+            # Get commits since previous tag
+            changelog=$(git log ${previous_tag}..HEAD --pretty=format:"- %s (%h)" --reverse)
+          fi
+
+          # Create the release body
+          {
+            echo "## What's Changed"
+            echo ""
+            echo "$changelog"
+            echo ""
+            if [ -n "$previous_tag" ]; then
+              echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${previous_tag}...v${{ env.new_version }}"
+            fi
+          } > release_notes.md
+
+          # Set output for use in next step
+          echo "previous_tag=$previous_tag" >> $GITHUB_ENV
+
       - name: Create GitHub Release
         if: contains(github.event.head_commit.message, 'release')
         uses: softprops/action-gh-release@v1
@@ -54,9 +83,31 @@ jobs:
           files: github-to-wordpress-sync.zip
           tag_name: "v${{ env.new_version }}"
           name: "Release v${{ env.new_version }}"
-          body: "Release v${{ env.new_version }} of the plugin."
+          body_path: release_notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate pre-release changelog
+        if: contains(github.event.head_commit.message, 'alphatag')
+        run: |
+          # Get the previous tag
+          previous_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          if [ -z "$previous_tag" ]; then
+            changelog=$(git log --pretty=format:"- %s (%h)" --reverse)
+          else
+            changelog=$(git log ${previous_tag}..HEAD --pretty=format:"- %s (%h)" --reverse)
+          fi
+
+          {
+            echo "## What's Changed (Pre-release)"
+            echo ""
+            echo "$changelog"
+            echo ""
+            if [ -n "$previous_tag" ]; then
+              echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${previous_tag}...pre-v${{ env.version }}"
+            fi
+          } > prerelease_notes.md
 
       - name: Create GitHub Pre-release
         if: contains(github.event.head_commit.message, 'alphatag')
@@ -66,6 +117,6 @@ jobs:
           files: github-to-wordpress-sync.zip
           tag_name: "pre-v${{ env.version }}"
           name: "Pre-release v${{ env.version }}"
-          body: "Pre-release v${{ env.version }} of the plugin."
+          body_path: prerelease_notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
