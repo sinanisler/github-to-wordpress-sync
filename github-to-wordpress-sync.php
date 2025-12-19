@@ -563,7 +563,7 @@ class GTWS_Sync_Manager {
             'commit_sha' => $commit_sha,
             'commit_message' => $commit_message,
             'commit_date' => $commit_date,
-            'synced_at' => current_time('mysql')
+            'synced_at' => current_time('mysql', true)
         ));
 
         // Keep only last 20 sync records
@@ -1045,7 +1045,7 @@ class Github_To_WordPress_Sync {
             'branch' => $branch,
             'last_sync' => null,
             'last_commit' => null,
-            'created_at' => current_time('mysql'),
+            'created_at' => current_time('mysql', true),
         );
         
         // Check for latest commit
@@ -1161,7 +1161,7 @@ class Github_To_WordPress_Sync {
         $result = $sync_manager->sync_project($project);
 
         if ($result['success']) {
-            $projects[$project_index]['last_sync'] = current_time('mysql');
+            $projects[$project_index]['last_sync'] = current_time('mysql', true);
             $projects[$project_index]['last_sync_commit'] = $project['last_commit'];
             update_option('gtws_projects', $projects);
 
@@ -1296,7 +1296,7 @@ class Github_To_WordPress_Sync {
         $result = $sync_manager->sync_project($project, $commit_sha);
 
         if ($result['success']) {
-            $projects[$project_index]['last_sync'] = current_time('mysql');
+            $projects[$project_index]['last_sync'] = current_time('mysql', true);
             $projects[$project_index]['last_sync_commit'] = $commit_sha;
             update_option('gtws_projects', $projects);
 
