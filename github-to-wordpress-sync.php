@@ -3,7 +3,7 @@
  * Plugin Name: Github to WordPress Sync
  * Plugin URI: https://github.com/sinanisler/github-to-wordpress-sync
  * Description: GitHub to WordPress Sync: Streamline theme & plugin updates directly from GitHub. Easy, secure, and developer-friendly.
- * Version: 0.7
+ * Version: 0.8
  * Author: sinanisler
  * Author URI: https://sinanisler.com/
  * License: GPL v2 or later
