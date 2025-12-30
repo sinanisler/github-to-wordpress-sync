@@ -1150,6 +1150,22 @@ class Github_To_WordPress_Sync {
 
         $project = $projects[$project_index];
 
+        // Fetch latest commit info from GitHub BEFORE syncing
+        $github_api = new GTWS_Github_API();
+        $latest_commit = $github_api->get_latest_commit($project['github_url'], $project['branch']);
+
+        if ($latest_commit) {
+            // Update project with latest commit info
+            $projects[$project_index]['last_commit'] = $latest_commit['sha'];
+            $projects[$project_index]['commit_message'] = $latest_commit['message'];
+            $projects[$project_index]['commit_date'] = $latest_commit['date'];
+
+            // Update the project variable to use for syncing
+            $project['last_commit'] = $latest_commit['sha'];
+            $project['commit_message'] = $latest_commit['message'];
+            $project['commit_date'] = $latest_commit['date'];
+        }
+
         // Perform sync
         $sync_manager = new GTWS_Sync_Manager();
         $result = $sync_manager->sync_project($project);
@@ -1169,7 +1185,12 @@ class Github_To_WordPress_Sync {
 
             wp_send_json_success(array(
                 'message' => 'Sync completed successfully!',
-                'details' => $result
+                'details' => $result,
+                'commit' => array(
+                    'sha' => $project['last_commit'],
+                    'message' => $project['commit_message'],
+                    'date' => $project['commit_date']
+                )
             ));
         } else {
             wp_send_json_error($result['message']);
@@ -1285,6 +1306,9 @@ class Github_To_WordPress_Sync {
             wp_send_json_error('Commit not found');
         }
 
+        // Also fetch the LATEST commit from GitHub to update last_commit field
+        $latest_commit = $github_api->get_latest_commit($project['github_url'], $project['branch']);
+
         // Perform sync to specific commit
         $sync_manager = new GTWS_Sync_Manager();
         $result = $sync_manager->sync_project($project, $commit_sha);
@@ -1292,6 +1316,14 @@ class Github_To_WordPress_Sync {
         if ($result['success']) {
             $projects[$project_index]['last_sync'] = current_time('mysql', true);
             $projects[$project_index]['last_sync_commit'] = $commit_sha;
+
+            // Update the latest commit info from GitHub (not the restored commit)
+            if ($latest_commit) {
+                $projects[$project_index]['last_commit'] = $latest_commit['sha'];
+                $projects[$project_index]['commit_message'] = $latest_commit['message'];
+                $projects[$project_index]['commit_date'] = $latest_commit['date'];
+            }
+
             update_option('gtws_projects', $projects);
 
             // Add to sync history
@@ -1304,7 +1336,8 @@ class Github_To_WordPress_Sync {
 
             wp_send_json_success(array(
                 'message' => 'Restored to commit successfully!',
-                'details' => $result
+                'details' => $result,
+                'latest_commit' => $latest_commit
             ));
         } else {
             wp_send_json_error($result['message']);
