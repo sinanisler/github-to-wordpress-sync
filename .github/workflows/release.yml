@@ -56,10 +56,10 @@ jobs:
 
           if [ -z "$previous_tag" ]; then
             # If no previous tag, get all commits
-            changelog=$(git log --pretty=format:"- %s (%h)" --reverse)
+            changelog=$(git log --pretty=format:"- %s (%h)")
           else
             # Get commits since previous tag
-            changelog=$(git log ${previous_tag}..HEAD --pretty=format:"- %s (%h)" --reverse)
+            changelog=$(git log ${previous_tag}..HEAD --pretty=format:"- %s (%h)")
           fi
 
           # Create the release body
@@ -94,9 +94,9 @@ jobs:
           previous_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
 
           if [ -z "$previous_tag" ]; then
-            changelog=$(git log --pretty=format:"- %s (%h)" --reverse)
+            changelog=$(git log --pretty=format:"- %s (%h)")
           else
-            changelog=$(git log ${previous_tag}..HEAD --pretty=format:"- %s (%h)" --reverse)
+            changelog=$(git log ${previous_tag}..HEAD --pretty=format:"- %s (%h)")
           fi
 
           {
