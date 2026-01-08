@@ -7,6 +7,8 @@
 
 GitHub to WordPress Sync: Streamline theme & plugin updates directly from GitHub. Easy, secure, and developer-friendly.
 
+> NOTE: It should be obvious, but I will write it anyway: this should be used on staging or development, NOT production sites. Of course, if you know what you are doing you can use it, but I wouldn’t recommend it.
+
 <img width="1387" height="950" alt="image" src="https://github.com/user-attachments/assets/938fa78b-b7ff-4216-beeb-79d866113d38" />
 
 
