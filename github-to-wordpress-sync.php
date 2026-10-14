@@ -452,33 +452,62 @@ class GTWS_Sync_Manager {
 
         $source_dir = $extracted_folders[0];
 
-        // Remove existing directory completely (no backup - we have Git history!)
-        if (file_exists($target_dir)) {
-            $this->cleanup_directory($target_dir);
-        }
+        // Stage the new copy in wp-content/upgrade (same as WP core updates) so the
+        // live folder stays untouched until the copy is complete
+        $staging_root = WP_CONTENT_DIR . '/upgrade';
+        wp_mkdir_p($staging_root);
+        $staging_base = $staging_root . '/gtws-' . basename($target_dir);
+        $staging_dir = $staging_base . '-new';
+        $old_dir = $staging_base . '-old';
 
-        // Create target directory
-        wp_mkdir_p($target_dir);
+        // Remove leftovers from a previously interrupted sync
+        $this->cleanup_directory($staging_dir);
+        $this->cleanup_directory($old_dir);
 
-        // Sync files from source to target
-        $sync_result = $this->sync_directories($source_dir, $target_dir);
+        // Copy files from source to staging
+        $sync_result = $this->sync_directories($source_dir, $staging_dir);
 
         // Clean up temp directory
         $this->cleanup_directory($temp_dir);
 
-        if ($sync_result) {
-            return array(
-                'success' => true,
-                'message' => 'Project synced successfully!',
-                'target_dir' => $target_dir,
-                'commit_sha' => $commit_sha
-            );
-        } else {
+        if (!$sync_result) {
+            $this->cleanup_directory($staging_dir);
             return array(
                 'success' => false,
-                'message' => 'Failed to sync files'
+                'message' => 'Failed to copy files. Existing files were not changed.'
             );
         }
+
+        // Move the current folder aside
+        if (file_exists($target_dir) && !@rename($target_dir, $old_dir)) {
+            $this->cleanup_directory($staging_dir);
+            return array(
+                'success' => false,
+                'message' => 'Could not replace the existing folder (it may be locked). Existing files were not changed.'
+            );
+        }
+
+        // Swap the new copy into place, rolling back on failure
+        if (!@rename($staging_dir, $target_dir)) {
+            if (file_exists($old_dir)) {
+                @rename($old_dir, $target_dir);
+            }
+            $this->cleanup_directory($staging_dir);
+            return array(
+                'success' => false,
+                'message' => 'Failed to move synced files into place. Existing files were restored.'
+            );
+        }
+
+        // Swap succeeded, remove the old copy
+        $this->cleanup_directory($old_dir);
+
+        return array(
+            'success' => true,
+            'message' => 'Project synced successfully!',
+            'target_dir' => $target_dir,
+            'commit_sha' => $commit_sha
+        );
     }
     
     /**

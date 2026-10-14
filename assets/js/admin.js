@@ -156,9 +156,9 @@
                         $status.removeClass('loading').addClass('warning')
                             .html(`
                                 <strong>Update Available!</strong><br>
-                                Latest commit: <code>${data.commit.sha.substring(0, 7)}</code><br>
-                                Message: ${data.commit.message}<br>
-                                Date: ${formatDate(data.commit.date)}
+                                Latest commit: <code>${escapeHtml(data.commit.sha.substring(0, 7))}</code><br>
+                                Message: ${escapeHtml(data.commit.message)}<br>
+                                Date: ${escapeHtml(formatDate(data.commit.date))}
                             `);
                         showNotice('🎉 Update Available! New commits are ready to sync.', 'warning', true);
                         
@@ -176,7 +176,7 @@
                     }
                 } else {
                     $status.removeClass('loading').addClass('error')
-                        .html('<strong>Error:</strong> ' + response.data);
+                        .html('<strong>Error:</strong> ' + escapeHtml(response.data));
                     showNotice('❌ Error: ' + response.data, 'error', true);
                 }
             })
@@ -220,8 +220,8 @@
                     $status.removeClass('loading').addClass('success')
                         .html(`
                             <strong>✓ Sync Completed Successfully!</strong><br>
-                            ${response.data.message}<br>
-                            Target: ${response.data.details.target_dir}
+                            ${escapeHtml(response.data.message)}<br>
+                            Target: ${escapeHtml(response.data.details.target_dir)}
                         `);
                     showNotice('Project synced successfully!', 'success');
                     
@@ -231,7 +231,7 @@
                     }, 2000);
                 } else {
                     $status.removeClass('loading').addClass('error')
-                        .html('<strong>Sync Failed:</strong> ' + response.data);
+                        .html('<strong>Sync Failed:</strong> ' + escapeHtml(response.data));
                     showNotice('❌ Sync failed: ' + response.data, 'error', true);
                 }
             })
@@ -302,7 +302,7 @@
             const $notice = $('<div>')
                 .addClass('gtws-notice')
                 .addClass(type || 'success')
-                .html('<div class="gtws-notice-content">' + message + '</div>')
+                .append($('<div>').addClass('gtws-notice-content').text(message))
                 .append($closeBtn);
             
             $('body').append($notice);
@@ -334,6 +334,11 @@
             // Could be expanded to update specific elements if needed
         }
         
+        // Escape a value for safe insertion into HTML
+        function escapeHtml(value) {
+            return $('<div>').text(value == null ? '' : String(value)).html();
+        }
+
         // Format date
         function formatDate(dateString) {
             const date = new Date(dateString);
@@ -462,7 +467,8 @@
                 if (wasSynced) {
                     const $syncInfo = $('<div>')
                         .addClass('gtws-sync-info')
-                        .html('<span class="dashicons dashicons-backup"></span> Synced on ' + formatDate(wasSynced));
+                        .append('<span class="dashicons dashicons-backup"></span>')
+                        .append(document.createTextNode(' Synced on ' + formatDate(wasSynced)));
                     $date.append($syncInfo);
                 }
 
@@ -509,7 +515,7 @@
             $projectItem.find('button').prop('disabled', true);
 
             $status.removeClass('success error warning').addClass('loading show')
-                .html('Restoring to commit ' + commitSha.substring(0, 7) + '... This may take a moment.');
+                .text('Restoring to commit ' + commitSha.substring(0, 7) + '... This may take a moment.');
 
             $.post(gtws_ajax.ajax_url, {
                 action: 'gtws_restore_commit',
@@ -522,8 +528,8 @@
                     $status.removeClass('loading').addClass('success')
                         .html(`
                             <strong>✓ Restore Completed Successfully!</strong><br>
-                            ${response.data.message}<br>
-                            Restored to commit: <code>${commitSha.substring(0, 7)}</code>
+                            ${escapeHtml(response.data.message)}<br>
+                            Restored to commit: <code>${escapeHtml(commitSha.substring(0, 7))}</code>
                         `);
                     showNotice('Project restored to commit ' + commitSha.substring(0, 7) + ' successfully!', 'success');
 
@@ -533,7 +539,7 @@
                     }, 2000);
                 } else {
                     $status.removeClass('loading').addClass('error')
-                        .html('<strong>Restore Failed:</strong> ' + response.data);
+                        .html('<strong>Restore Failed:</strong> ' + escapeHtml(response.data));
                     showNotice('❌ Restore failed: ' + response.data, 'error', true);
                     $btn.prop('disabled', false).html(originalText);
                     $projectItem.find('button').prop('disabled', false);
